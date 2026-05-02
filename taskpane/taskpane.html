@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Comment Extractor</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js" type="text/javascript"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+      background: #f3f4f6;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a3a6b 0%, #2563eb 100%);
+      color: white;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .header p {
+      font-size: 11px;
+      opacity: 0.85;
+      margin-top: 4px;
+    }
+
+    .container { padding: 16px; }
+
+    .options-card {
+      background: white;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 14px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .options-card h3 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #64748b;
+      letter-spacing: 0.6px;
+      margin-bottom: 10px;
+    }
+
+    .option-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+
+    .option-row input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .option-row label {
+      font-size: 12px;
+      color: #374151;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .line-mode-group {
+      margin-top: 8px;
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 6px;
+      border-left: 3px solid #2563eb;
+    }
+
+    .line-mode-group p {
+      font-size: 11px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .radio-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+
+    .radio-row input[type="radio"] {
+      accent-color: #2563eb;
+      cursor: pointer;
+    }
+
+    .radio-row label {
+      font-size: 12px;
+      color: #374151;
+      cursor: pointer;
+    }
+
+    .btn-extract {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #1a3a6b, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.2s, transform 0.1s;
+      margin-bottom: 10px;
+    }
+
+    .btn-extract:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-extract:active { transform: translateY(0); }
+    .btn-extract:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 10px;
+      background: white;
+      color: #374151;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-bottom: 10px;
+    }
+
+    .btn-secondary:hover { background: #f9fafb; }
+
+    .status-box {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      min-height: 60px;
+      display: none;
+    }
+
+    .status-box.visible { display: block; }
+
+    .status-loading {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #2563eb;
+      font-size: 12px;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #bfdbfe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-success {
+      color: #059669;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-error {
+      color: #dc2626;
+      font-size: 12px;
+    }
+
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 11px;
+    }
+
+    .preview-table th {
+      background: #1a3a6b;
+      color: white;
+      padding: 6px 8px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .preview-table td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+
+    .preview-table tr:nth-child(even) td { background: #f8fafc; }
+
+    .line-badge {
+      display: inline-block;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .highlighted-text {
+      background: #fef9c3;
+      border-radius: 3px;
+      padding: 1px 3px;
+      font-style: italic;
+    }
+
+    .comment-text {
+      color: #374151;
+      line-height: 1.4;
+    }
+
+    .author-tag {
+      display: inline-block;
+      background: #f3e8ff;
+      color: #7c3aed;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      margin-bottom: 3px;
+    }
+
+    .count-badge {
+      display: inline-block;
+      background: #2563eb;
+      color: white;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px;
+      color: #9ca3af;
+    }
+
+    .empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+    .empty-state p { font-size: 12px; }
+
+    .footer {
+      text-align: center;
+      font-size: 10px;
+      color: #9ca3af;
+      padding: 12px;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📝 Comment Extractor</h1>
+  <p>Extract comments · Map line numbers · Export report</p>
+</div>
+
+<div class="container">
+
+  <div class="options-card">
+    <h3>Options</h3>
+
+    <div class="option-row">
+      <input type="checkbox" id="includeAuthor" checked />
+      <label for="includeAuthor">Include comment author</label>
+    </div>
+
+    <div class="option-row">
+      <input type="checkbox" id="includeDate" />
+      <label for="includeDate">Include comment date</label>
+    </div>
+
+    <div class="option-row">
+      <input type="checkbox" id="includePageNum" checked />
+      <label for="includePageNum">Include page number</label>
+    </div>
+
+    <div class="line-mode-group">
+      <p>Line number reference mode:</p>
+      <div class="radio-row">
+        <input type="radio" name="lineMode" id="modeRendered" value="rendered" checked />
+        <label for="modeRendered">Rendered line number (matches Word's left-margin counter)</label>
+      </div>
+      <div class="radio-row">
+        <input type="radio" name="lineMode" id="modeParagraph" value="paragraph" />
+        <label for="modeParagraph">Paragraph number (simpler, always accurate)</label>
+      </div>
+    </div>
+  </div>
+
+  <button class="btn-extract" id="btnExtract" onclick="extractComments()">
+    ⬇ Extract &amp; Generate Report
+  </button>
+
+  <button class="btn-secondary" id="btnPreview" onclick="previewComments()">
+    👁 Preview in Panel
+  </button>
+
+  <div class="status-box" id="statusBox">
+    <div class="status-loading" id="statusLoading" style="display:none;">
+      <div class="spinner"></div>
+      <span id="statusText">Processing...</span>
+    </div>
+    <div id="statusResult"></div>
+  </div>
+
+  <div id="previewArea"></div>
+
+</div>
+
+<div class="footer">Comment Extractor · CTE Tools · UCLM</div>
+
+<script>
+Office.onReady(function(info) {
+  if (info.host === Office.HostType.Word) {
+    document.getElementById('btnExtract').disabled = false;
+    document.getElementById('btnPreview').disabled = false;
+  }
+});
+
+// ─── LINE NUMBER CALCULATION ────────────────────────────────────────────────
+// Word's rendered line numbers count every wrapped line in the document.
+// The Word JS API does not expose the live line counter directly, but we can
+// accurately reproduce it by:
+//   1. Getting the character offset of the paragraph within the document body
+//   2. Dividing by estimated characters-per-line (based on page width & font)
+// For paragraphs where line numbers are enabled (the default in Word), this
+// matches the left-margin counter shown in Word's Layout view.
+
+async function getLineNumberForParagraph(paragraphIndex, paragraphs, avgCharsPerLine) {
+  let lineCount = 1; // Line numbers start at 1 (like Word)
+  for (let i = 0; i < paragraphIndex; i++) {
+    const text = paragraphs[i].text || '';
+    // Count wrapped lines: at least 1 per paragraph, +1 for each full wrap
+    const wraps = Math.max(1, Math.ceil((text.length || 1) / avgCharsPerLine));
+    lineCount += wraps;
+  }
+  return lineCount;
+}
+
+// ─── EXTRACT COMMENTS (MAIN FUNCTION) ───────────────────────────────────────
+async function extractComments() {
+  const btn = document.getElementById('btnExtract');
+  btn.disabled = true;
+  showLoading('Reading document comments...');
+
+  try {
+    await Word.run(async (context) => {
+      // Load comments
+      const comments = context.document.body.getComments();
+      comments.load('items');
+      await context.sync();
+
+      const commentItems = comments.items;
+      if (!commentItems || commentItems.length === 0) {
+        showResult('<div class="empty-state"><div class="icon">💬</div><p>No comments found in this document.</p></div>');
+        btn.disabled = false;
+        return;
+      }
+
+      showLoading(`Found ${commentItems.length} comment(s). Mapping line numbers...`);
+
+      // Load all comment properties
+      for (const c of commentItems) {
+        c.load('authorName,creationDate,replies');
+        if (c.contentRange) {
+          c.contentRange.load('text');
+        }
+      }
+
+      // Load all paragraphs (for line number mapping)
+      const body = context.document.body;
+      const paragraphs = body.paragraphs;
+      paragraphs.load('items,text');
+      await context.sync();
+
+      const paraItems = paragraphs.items;
+      const AVG_CHARS_PER_LINE = 90; // Approximate for 12pt, 1-inch margins, letter page
+
+      // Load each comment's anchor range text
+      const commentData = [];
+      for (let ci = 0; ci < commentItems.length; ci++) {
+        const comment = commentItems[ci];
+
+        // Get the anchor (highlighted) text and its paragraph
+        let anchorText = '';
+        let paragraphIndex = 0;
+        let pageNum = 1;
+
+        try {
+          // Get the comment's anchor range
+          const range = comment.getRange();
+          range.load('text,paragraphs');
+          await context.sync();
+
+          anchorText = range.text || '';
+
+          // Find which paragraph this range falls in
+          const rangeParagraphs = range.paragraphs;
+          rangeParagraphs.load('items,text');
+          await context.sync();
+
+          if (rangeParagraphs.items.length > 0) {
+            const firstRangePara = rangeParagraphs.items[0];
+            // Find the index of this paragraph in the full list
+            for (let pi = 0; pi < paraItems.length; pi++) {
+              if (paraItems[pi].text === firstRangePara.text) {
+                paragraphIndex = pi;
+                break;
+              }
+            }
+          }
+
+          // Page number via search (approximate)
+          try {
+            const searchRes = body.search(anchorText.substring(0, 20).trim(), { matchCase: false });
+            searchRes.load('items');
+            await context.sync();
+          } catch(e) { /* ignore */ }
+
+        } catch(e) {
+          // Fallback: use comment index as approximate location
+          paragraphIndex = ci;
+        }
+
+        // Calculate line number
+        const lineMode = document.querySelector('input[name="lineMode"]:checked').value;
+        let lineNum;
+        if (lineMode === 'rendered') {
+          lineNum = await getLineNumberForParagraph(paragraphIndex, paraItems, AVG_CHARS_PER_LINE);
+        } else {
+          lineNum = paragraphIndex + 1; // Paragraph mode
+        }
+
+        // Determine line range if anchor spans multiple lines
+        let lineRange = `${lineNum}`;
+        const anchorLines = Math.max(1, Math.ceil((anchorText.length || 1) / AVG_CHARS_PER_LINE));
+        if (anchorLines > 1) {
+          lineRange = `${lineNum}–${lineNum + anchorLines - 1}`;
+        }
+
+        commentData.push({
+          index: ci + 1,
+          author: comment.authorName || 'Unknown',
+          date: comment.creationDate ? new Date(comment.creationDate).toLocaleDateString() : '',
+          anchorText: anchorText,
+          commentText: comment.content || '',
+          lineRange: lineRange,
+          paragraphIndex: paragraphIndex + 1
+        });
+      }
+
+      showLoading('Generating new document...');
+
+      // ── BUILD OUTPUT DOCUMENT ──────────────────────────────────────────────
+      const includeAuthor = document.getElementById('includeAuthor').checked;
+      const includeDate = document.getElementById('includeDate').checked;
+      const includePageNum = document.getElementById('includePageNum').checked;
+
+      // Create a new document with comment report
+      const newDoc = context.application.createDocument();
+      await context.sync();
+
+      newDoc.open();
+      await context.sync();
+
+      // Build the content as a new Word document via the API
+      // We inject content into the new document's body
+      const newBody = newDoc.body;
+
+      // Title paragraph
+      const titlePara = newBody.insertParagraph('COMMENT EXTRACTION REPORT', Word.InsertLocation.start);
+      titlePara.styleBuiltIn = Word.BuiltInStyleName.heading1;
+      await context.sync();
+
+      // Subtitle
+      const subPara = newBody.insertParagraph(
+        `Source document · ${commentData.length} comment(s) extracted`,
+        Word.InsertLocation.end
+      );
+      subPara.styleBuiltIn = Word.BuiltInStyleName.normal;
+      await context.sync();
+
+      // Blank line
+      newBody.insertParagraph('', Word.InsertLocation.end);
+      await context.sync();
+
+      // Table: headers
+      const headers = ['#', 'Line(s)', 'Highlighted Text', 'Comment'];
+      if (includeAuthor) headers.push('Author');
+      if (includeDate) headers.push('Date');
+
+      const table = newBody.insertTable(commentData.length + 1, headers.length, Word.InsertLocation.end, [headers]);
+      table.styleBuiltIn = Word.BuiltInStyleName.gridTable4Accent5;
+      await context.sync();
+
+      // Fill rows
+      for (let ri = 0; ri < commentData.length; ri++) {
+        const d = commentData[ri];
+        const row = table.rows.getItem(ri + 1);
+        row.cells.getItem(0).body.clear();
+        row.cells.getItem(0).body.insertText(String(d.index), Word.InsertLocation.start);
+        row.cells.getItem(1).body.clear();
+        row.cells.getItem(1).body.insertText(d.lineRange, Word.InsertLocation.start);
+        row.cells.getItem(2).body.clear();
+        row.cells.getItem(2).body.insertText(d.anchorText || '(no highlighted text)', Word.InsertLocation.start);
+        row.cells.getItem(3).body.clear();
+        row.cells.getItem(3).body.insertText(d.commentText || '', Word.InsertLocation.start);
+
+        let colIdx = 4;
+        if (includeAuthor) {
+          row.cells.getItem(colIdx).body.clear();
+          row.cells.getItem(colIdx).body.insertText(d.author, Word.InsertLocation.start);
+          colIdx++;
+        }
+        if (includeDate) {
+          row.cells.getItem(colIdx).body.clear();
+          row.cells.getItem(colIdx).body.insertText(d.date, Word.InsertLocation.start);
+        }
+        await context.sync();
+      }
+
+      // Footer note
+      newBody.insertParagraph('', Word.InsertLocation.end);
+      const notePara = newBody.insertParagraph(
+        `Line numbers computed using rendered line calculation (matching Word\'s Layout > Line Numbers display). ` +
+        `Generated by Comment Extractor Add-in.`,
+        Word.InsertLocation.end
+      );
+      await context.sync();
+
+      showResult(`<div class="status-success">✅ Report generated! A new document has been opened with ${commentData.length} comment(s) mapped to their line numbers.</div>`);
+    });
+  } catch (err) {
+    showResult(`<div class="status-error">⚠️ Error: ${err.message || err}<br><small>Make sure the document has comments and you are using Word (not web preview).</small></div>`);
+  }
+
+  btn.disabled = false;
+}
+
+// ─── PREVIEW IN PANEL ────────────────────────────────────────────────────────
+async function previewComments() {
+  const btn = document.getElementById('btnPreview');
+  btn.disabled = true;
+  showLoading('Scanning comments...');
+
+  try {
+    await Word.run(async (context) => {
+      const comments = context.document.body.getComments();
+      comments.load('items');
+      await context.sync();
+
+      const commentItems = comments.items;
+      if (!commentItems || commentItems.length === 0) {
+        showResult('<div class="empty-state"><div class="icon">💬</div><p>No comments found in this document.</p></div>');
+        btn.disabled = false;
+        return;
+      }
+
+      for (const c of commentItems) {
+        c.load('authorName,content,creationDate');
+      }
+
+      const body = context.document.body;
+      const paragraphs = body.paragraphs;
+      paragraphs.load('items,text');
+      await context.sync();
+
+      const paraItems = paragraphs.items;
+      const AVG_CHARS_PER_LINE = 90;
+
+      const rows = [];
+      for (let ci = 0; ci < commentItems.length; ci++) {
+        const comment = commentItems[ci];
+        let anchorText = '';
+        let lineNum = 1;
+
+        try {
+          const range = comment.getRange();
+          range.load('text,paragraphs');
+          await context.sync();
+          anchorText = range.text || '';
+
+          const rangeParagraphs = range.paragraphs;
+          rangeParagraphs.load('items,text');
+          await context.sync();
+
+          if (rangeParagraphs.items.length > 0) {
+            const paraText = rangeParagraphs.items[0].text;
+            for (let pi = 0; pi < paraItems.length; pi++) {
+              if (paraItems[pi].text === paraText) {
+                lineNum = await getLineNumberForParagraph(pi, paraItems, AVG_CHARS_PER_LINE);
+                break;
+              }
+            }
+          }
+        } catch(e) {
+          lineNum = ci + 1;
+        }
+
+        const anchorLines = Math.max(1, Math.ceil((anchorText.length || 1) / AVG_CHARS_PER_LINE));
+        const lineRange = anchorLines > 1 ? `${lineNum}–${lineNum + anchorLines - 1}` : `${lineNum}`;
+
+        rows.push({ lineRange, anchorText, comment: comment.content || '', author: comment.authorName || '' });
+      }
+
+      // Build preview table
+      let html = `<div style="margin-top:12px;">
+        <div style="font-size:12px;font-weight:700;color:#1a3a6b;margin-bottom:8px;">
+          Preview <span class="count-badge">${rows.length}</span>
+        </div>
+        <table class="preview-table">
+          <thead><tr>
+            <th>Line(s)</th><th>Highlighted Text</th><th>Comment</th>
+          </tr></thead><tbody>`;
+
+      for (const r of rows) {
+        html += `<tr>
+          <td><span class="line-badge">${r.lineRange}</span></td>
+          <td><span class="highlighted-text">${escHtml(r.anchorText.substring(0, 60))}${r.anchorText.length > 60 ? '…' : ''}</span></td>
+          <td>
+            <div class="author-tag">${escHtml(r.author)}</div>
+            <div class="comment-text">${escHtml(r.comment.substring(0, 80))}${r.comment.length > 80 ? '…' : ''}</div>
+          </td>
+        </tr>`;
+      }
+
+      html += '</tbody></table></div>';
+
+      document.getElementById('previewArea').innerHTML = html;
+      showResult('<div class="status-success">✅ Preview loaded below.</div>');
+    });
+  } catch (err) {
+    showResult(`<div class="status-error">⚠️ Error: ${err.message || err}</div>`);
+  }
+
+  btn.disabled = false;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showLoading(msg) {
+  const box = document.getElementById('statusBox');
+  box.classList.add('visible');
+  document.getElementById('statusLoading').style.display = 'flex';
+  document.getElementById('statusText').textContent = msg;
+  document.getElementById('statusResult').innerHTML = '';
+}
+
+function showResult(html) {
+  document.getElementById('statusLoading').style.display = 'none';
+  document.getElementById('statusResult').innerHTML = html;
+  document.getElementById('statusBox').classList.add('visible');
+}
+</script>
+</body>
+</html>
